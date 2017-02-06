@@ -91,7 +91,6 @@ Param([string]$name)
         { 
             Import-Module -Name $name 
             Write-Output "Imported module $name"
-            #LogWrite "Imported module $name" -type i -v $true
         } 
         else 
         { 
@@ -101,8 +100,7 @@ Param([string]$name)
     } 
     else 
     { 
-        #LogWrite "Module $name is already loaded..." -type w -v $true
-        Write-Output "Module $name is already loaded..."
+        Write-Warning "Module $name is already loaded..."
     } 
 }  
 
@@ -157,20 +155,17 @@ param(
 )
    try 
     {	 
-		#Write to Log
+		#Write to job history
 		Write-Output "Collecting Office 365 User List"
-		#LogWrite "Collecting Office 365 User List" -type i
 		#Determine Result Size
 		if ($DSResultSize -eq "All") {
 			#Clear ResultSetSize Variable
 			$DSResultSize = $null
 			#Collect AD Users All Results
 			$CollectUsers = Get-ADUser -filter $DSFilter -Properties $DSTargetProperty -SearchBase $DSSrchBase -SearchScope $DSSrchScope | Select-Object Name,UserPrincipalName,SamAccountName,$DSTargetProperty   
-			#Write to Log
-			#LogWrite "Collecting Users from $DSSrchBase filtered by $DSFilter" -type i
-			Write-Output "Collecting Users from $DSSrchBase filtered by $DSFilter"
+			#Write to job history
+            Write-Output "Collecting Users from $DSSrchBase filtered by $DSFilter"
 			Write-Output "Collecting Office 365 User List complete"
-			#LogWrite "Collecting Office 365 User List complete" -type i
 			#Return Values on completion
 			Return $CollectUsers
 			
@@ -178,11 +173,9 @@ param(
 			#Do Nothing and use configured result size
 			#Collect AD Users All Results
 			$CollectUsers = Get-ADUser -filter $DSFilter -Properties $DSTargetProperty -SearchBase $DSSrchBase -SearchScope $DSSrchScope -ResultSetSize $DSResultSize | Select-Object Name,UserPrincipalName,SamAccountName,$DSTargetProperty   
-			#Write to Log
-			#LogWrite "Collecting Users from $DSSrchBase filtered by $DSFilter" -type i
+			#Write to job history
 			Write-Output "Collecting Users from $DSSrchBase filtered by $DSFilter"
 			Write-Output "Collecting Office 365 User List complete"
-			#LogWrite "Collecting Office 365 User List complete" -type i
 			#Return Values on completion
 			Return $CollectUsers
 		}
@@ -190,7 +183,6 @@ param(
     catch [system.exception]
     {
 		$err = $_.Exception.Message
-		#LogWrite "Could not Collect Users from $DSSrchBase filtered by $DSFilter, `r`nError: $err" -type e
 		Write-Error "Could not Collect Users from $DSSrchBase filtered by $DSFilter, `r`nError: $err"
     }
 }
@@ -219,9 +211,8 @@ param(
 )
    try 
     {	 
-		#Write to Log
+		#Write to job history
 		Write-Output "Determining users requiring updates"
-		#LogWrite "Determining users requiring updates" -type i
 		#Create User to Update Array Variable
 		$UsersToUpdate = @()
 		#Begin checking supplied users to determine if TargetProperty has already been set
@@ -232,28 +223,22 @@ param(
         #Friendly user name variable
 		$DSuser = $user.'Name'
 		Write-Output "Checking $DSuser if $DSTargetProperty is set"
-		#LogWrite "Checking $DSuser if $DSTargetProperty is set" -type i -v $true
 		if ($checkCloudAttrib -eq $null) {
 			Write-Output " - The user $DSuser does not have $DSTargetProperty set."
-			#LogWrite "The user $DSuser does not have $DSTargetProperty set." -type i
 			#Add User to the UsersToUpdate Array Variable
 			$UsersToUpdate = $UsersToUpdate + $user
-			
 			}
 		else {
 			Write-Output " - The user $DSuser already has $DSTargetProperty set."
-			#LogWrite "The user $DSuser already has $DSTargetProperty set." -type i -v $true
 				#Routine to determine is possibly set with an value other than expected
 				if ($checkCloudAttrib.length -ne 24) {
 					Write-Error "   - The user $DSuser may have an unexpected value in $DSTargetProperty set."
-					#LogWrite "The user $DSuser may have an unexpected value in $DSTargetProperty set." -type e
 			 	}		    
 			}
 		}
 		
-		#Write to Log
+		#Write to job history
 		Write-Output "Determining users requiring updates complete"
-		#LogWrite "Determining users requiring updates complete" -type i
 	
 		#Return Values on completion
 		Return $UsersToUpdate
@@ -262,7 +247,6 @@ param(
     catch [system.exception]
     {
 		$err = $_.Exception.Message
-		#LogWrite "Could not determine the users required to be updated, `r`nError: $err" -type e
 		Write-Error "Could not determine the users required to be updated, `r`nError: $err"
     }
 }
@@ -291,9 +275,8 @@ param(
 )
    try 
     {	 
-		#Write to Log
+		#Write to Job History
 		Write-Output "Applying O365 Immutable ID to required users..."
-		#LogWrite "Applying O365 Immutable ID to required users..." -type i
 
 		#Routine to apply O365 ImmutableID attribute
 		ForEach ($user in $DSUserList)
@@ -306,22 +289,18 @@ param(
 
 		#convert the objectguid to string and set this value into the TargetProperty attribute as the immutable id
 		$objectguidstring = Get-ADUser -Identity $aduser -Properties ObjectGUID | select ObjectGUID | foreach {[system.convert]::ToBase64String(([GUID]($_.ObjectGUID)).tobytearray())}
-		#LogWrite "Clearing $DSuser $DSTargetProperty" -type i -v $true
+		Write-Output "Clearing $DSuser $DSTargetProperty"
 		Set-ADUser -Identity $aduser -Clear $DSTargetProperty
-		#LogWrite "Setting $DSuser $DSTargetProperty to the same value as ObjectGUID" -type i
+		Write-Output "Setting $DSuser $DSTargetProperty to the same value as ObjectGUID"
 		Set-ADUser -Identity $aduser -Replace @{$DSTargetProperty=$objectguidstring}
-
 		}
 		
-		#Write to Log
+		#Write to Job History
 		Write-Output "Applying O365 Immutable ID to required users complete"
-		#LogWrite "Applying O365 Immutable ID to required users complete" -type i
-	
     } 
     catch [system.exception]
     {
 		$err = $_.Exception.Message
-		#LogWrite "Could not apply O365 Immutable ID to required users, `r`nError: $err" -type e
 		Write-Error "Could not apply O365 Immutable ID to required users, `r`nError: $err"
     }
 }
@@ -330,7 +309,6 @@ param(
 #        Modules        #
 #########################
 
-#LogWrite "Loading Required PowerShell Modules" -type i
 Write-Output "Loading Required PowerShell Modules"
 
 #Active Directory
@@ -340,23 +318,16 @@ Import-MyModule ActiveDirectory
 #       Execution       #
 #########################
 
-##Testing
-#Write-Output $global:ADDSUserFilter $global:ADDSUserO365ImmutableTargetAttribute $global:ADDSSearchBase $global:ADDSSearchScope $global:ADDSResultSetSize
-
 ##Collect Office 365 User List
 $UserList = Collect-O365Users $global:ADDSUserFilter $global:ADDSUserO365ImmutableTargetAttribute $global:ADDSSearchBase $global:ADDSSearchScope $global:ADDSResultSetSize
+
 ##Determine users that require O365 ImmutableID
-
-##Testing
-#Write-Output $UserList
-
 #Check if userlist is not empty otherwise exit script
 If ($UserList -ne $null){ 
 	$UsersToUpdate = Determine-UsersToUpdate $UserList $global:ADDSUserO365ImmutableTargetAttribute
 } else {
-	Write-Output "No O365 Users were found. Exiting.."
-	#LogWrite "No O365 Users were found" -type w
-	#LogWrite "Office 365 ImmutableID Assignment Script Completed - $TimeDate" -type end
+	Write-Warning "No O365 Users were found. Exiting.."
+	Write-Output "Office 365 ImmutableID Assignment Script Completed - $TimeDate"
 	#Quit Script
 	Exit
 }
@@ -367,16 +338,11 @@ If ($UsersToUpdate -ne $null){
 	$UpdateUsers = Apply-O365ImmutableID $UsersToUpdate $global:ADDSUserO365ImmutableTargetAttribute
 } else {
 	Write-Output "No O365 Users required updating"
-	#LogWrite "No O365 Users required updating" -type i
 	Write-Output "Office 365 Immutable ID Assignment Script Completed"
-	#LogWrite "Office 365 Immutable ID Assignment Script Completed - $TimeDate" -type end
 	#Quit Script
 	Exit
 }
 
-
-#End of Script
-Write-Output "Office 365 Immutable ID Assignment Script Completed"
-#LogWrite "Office 365 Immutable ID Assignment Script Completed - $TimeDate" -type end
-
+## End of Script
+    Write-Output "Office 365 Immutable ID Assignment Script Completed"
 
