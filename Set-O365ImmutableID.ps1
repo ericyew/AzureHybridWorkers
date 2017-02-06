@@ -17,15 +17,16 @@
 				- Read/Write Permissions on accounts within scope of the runbook (or domain admins :) )
 				- Password that does not expire
 		Installation
-		1. Update Configuration Section of this script
-		2. Run this script as onprem service account to test if outputting desired outcome
-		3. If all works as desired create a scheduled task for this script to run as onprem service account
-		4. Secure Script run directory permissions so powershell file cannot be modified unauthorised people
+		1. Enter required parameters for the domain
+		2. Test this runbook in the test pane to confirm outputting desired outcome
+		3. If all works as desired create a scheduled task for this runbook to run with an on prem
+           credentials asset
+
 
 	.NOTES
 		Author: Jean-Pierre Simonis
 		Modified By: Eric Yew
-		LASTEDIT: Feb 6, 2017
+		LASTEDIT: Feb 7, 2017
 
 	.CHANGE LOG
 		16/06/2016 v1.0 - Initial Release
@@ -35,6 +36,9 @@
 			- Full Error trapping and handing
 			- Customisable to OU, User Filter, Source and Target attributes
 		6/02/2017 - Modified to work with Azure Hybrid Worker
+            - Embedded Connect-RemoteDomain.ps1 to connect to a trusted domain
+            - Updated logging to output to job history
+
 #>
 
 #########################
