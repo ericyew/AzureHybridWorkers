@@ -26,7 +26,7 @@
 	.NOTES
 		Author: Jean-Pierre Simonis
 		Modified By: Eric Yew
-		LASTEDIT: Feb 7, 2017
+		LASTEDIT: Feb 8, 2017
 
 	.CHANGE LOG
 		16/06/2016 v1.0 - Initial Release
@@ -38,12 +38,9 @@
 		6/02/2017 - Modified to work with Azure Hybrid Worker
             - Embedded Connect-RemoteDomain.ps1 to connect to a trusted domain
             - Updated logging to output to job history
+                -Only if verbose logging is enabled for runbook
 
 #>
-
-#########################
-#     Configuration     #
-#########################
 
 # Connect to Remote Domain
     param (
@@ -60,7 +57,10 @@
         [String] $DomainCredential = "SGAU serviceadmin",
 
         [parameter(Mandatory=$false)] 
-    	[String] $ADSearchBase = "OU=SlaterGordon,DC=slatergordon,DC=com,DC=au"
+    	[String] $ADSearchBase = "OU=SlaterGordon,DC=slatergordon,DC=com,DC=au",
+
+        [parameter(Mandatory=$false)] 
+    	[String] $VerboseOutput = $false
     ) 
 
     .\Connect-RemoteDomain.ps1 `
@@ -68,6 +68,10 @@
             -Site1 $Site1 `
             -Site2 $Site2 `
             -DomainCredential $DomainCredential 
+
+# Enable Verbose logging for testing
+    If($VerboseOutput){
+        $VerbosePreference = "Continue"}
 
 # On-Premise Active Directory Provisioning Configuration
     	#Base DN to start user search from
@@ -94,7 +98,7 @@ Param([string]$name)
         if(Get-Module -ListAvailable $name) 
         { 
             Import-Module -Name $name 
-            Write-Output "Imported module $name"
+            Write-Verbose "Imported module $name"
         } 
         else 
         { 
@@ -160,7 +164,7 @@ param(
    try 
     {	 
 		#Write to job history
-		Write-Output "Collecting Office 365 User List"
+		Write-Verbose "Collecting Office 365 User List"
 		#Determine Result Size
 		if ($DSResultSize -eq "All") {
 			#Clear ResultSetSize Variable
@@ -168,8 +172,8 @@ param(
 			#Collect AD Users All Results
 			$CollectUsers = Get-ADUser -filter $DSFilter -Properties $DSTargetProperty -SearchBase $DSSrchBase -SearchScope $DSSrchScope | Select-Object Name,UserPrincipalName,SamAccountName,$DSTargetProperty   
 			#Write to job history
-            Write-Output "Collecting Users from $DSSrchBase filtered by $DSFilter"
-			Write-Output "Collecting Office 365 User List complete"
+            Write-Verbose "Collecting Users from $DSSrchBase filtered by $DSFilter"
+			Write-Verbose "Collecting Office 365 User List complete"
 			#Return Values on completion
 			Return $CollectUsers
 			
@@ -178,8 +182,8 @@ param(
 			#Collect AD Users All Results
 			$CollectUsers = Get-ADUser -filter $DSFilter -Properties $DSTargetProperty -SearchBase $DSSrchBase -SearchScope $DSSrchScope -ResultSetSize $DSResultSize | Select-Object Name,UserPrincipalName,SamAccountName,$DSTargetProperty   
 			#Write to job history
-			Write-Output "Collecting Users from $DSSrchBase filtered by $DSFilter"
-			Write-Output "Collecting Office 365 User List complete"
+			Write-Verbose "Collecting Users from $DSSrchBase filtered by $DSFilter"
+			Write-Verbose "Collecting Office 365 User List complete"
 			#Return Values on completion
 			Return $CollectUsers
 		}
@@ -215,34 +219,34 @@ param(
 )
    try 
     {	 
-		#Write to job history
-		Write-Output "Determining users requiring updates"
+		#Write to Job Output
+		    Write-Verbose "Determining users requiring updates"
 		#Create User to Update Array Variable
-		$UsersToUpdate = @()
+		    $UsersToUpdate = @()
 		#Begin checking supplied users to determine if TargetProperty has already been set
-		ForEach ($user in $DSUserList)
-		{
-		#Routine to check if TargetProperty is not set for the user 
-		$checkCloudAttrib = $user.$DSTargetProperty
-        #Friendly user name variable
-		$DSuser = $user.'Name'
-		Write-Output "Checking $DSuser if $DSTargetProperty is set"
-		if ($checkCloudAttrib -eq $null) {
-			Write-Output " - The user $DSuser does not have $DSTargetProperty set."
-			#Add User to the UsersToUpdate Array Variable
-			$UsersToUpdate = $UsersToUpdate + $user
-			}
-		else {
-			Write-Output " - The user $DSuser already has $DSTargetProperty set."
-				#Routine to determine is possibly set with an value other than expected
-				if ($checkCloudAttrib.length -ne 24) {
-					Write-Error "   - The user $DSuser may have an unexpected value in $DSTargetProperty set."
-			 	}		    
-			}
-		}
+		    ForEach ($user in $DSUserList)
+		    {
+		        #Routine to check if TargetProperty is not set for the user 
+		        $checkCloudAttrib = $user.$DSTargetProperty
+                #Friendly user name variable
+		        $DSuser = $user.'Name'
+		        #Write-Verbose "Checking $DSuser if $DSTargetProperty is set"
+		        if ($checkCloudAttrib -eq $null) {
+			        Write-Verbose " - The user $DSuser does not have $DSTargetProperty set."
+			        #Add User to the UsersToUpdate Array Variable
+			        $UsersToUpdate = $UsersToUpdate + $user
+			    }
+		        else {
+			    Write-Verbose " - The user $DSuser already has $DSTargetProperty set."
+				    #Routine to determine is possibly set with an value other than expected
+				    if ($checkCloudAttrib.length -ne 24) {
+					    Write-Verbose "   - The user $DSuser may have an unexpected value in $DSTargetProperty set."
+			 	    }		    
+			    }
+		    }
 		
-		#Write to job history
-		Write-Output "Determining users requiring updates complete"
+		#Write to Log
+		Write-Verbose "Determining users requiring updates complete"
 	
 		#Return Values on completion
 		Return $UsersToUpdate
@@ -280,7 +284,7 @@ param(
    try 
     {	 
 		#Write to Job History
-		Write-Output "Applying O365 Immutable ID to required users..."
+		Write-Verbose "Applying O365 Immutable ID to required users..."
 
 		#Routine to apply O365 ImmutableID attribute
 		ForEach ($user in $DSUserList)
@@ -289,18 +293,18 @@ param(
 		$DSuser = $user.'Name'
 		#AD User account name variable
 		$aduser = $user.'SamAccountName'
-		Write-Output "Setting $DSuser $DSTargetProperty to the same value as ObjectGUID"
+		Write-Verbose "Setting $DSuser $DSTargetProperty to the same value as ObjectGUID"
 
 		#convert the objectguid to string and set this value into the TargetProperty attribute as the immutable id
 		$objectguidstring = Get-ADUser -Identity $aduser -Properties ObjectGUID | select ObjectGUID | foreach {[system.convert]::ToBase64String(([GUID]($_.ObjectGUID)).tobytearray())}
-		Write-Output "Clearing $DSuser $DSTargetProperty"
+		Write-Verbose "Clearing $DSuser $DSTargetProperty"
 		Set-ADUser -Identity $aduser -Clear $DSTargetProperty
-		Write-Output "Setting $DSuser $DSTargetProperty to the same value as ObjectGUID"
+		Write-Verbose "Setting $DSuser $DSTargetProperty to the same value as ObjectGUID"
 		Set-ADUser -Identity $aduser -Replace @{$DSTargetProperty=$objectguidstring}
 		}
 		
 		#Write to Job History
-		Write-Output "Applying O365 Immutable ID to required users complete"
+		Write-Verbose "Applying O365 Immutable ID to required users complete"
     } 
     catch [system.exception]
     {
@@ -313,7 +317,7 @@ param(
 #        Modules        #
 #########################
 
-Write-Output "Loading Required PowerShell Modules"
+Write-Verbose "Loading Required PowerShell Modules"
 
 #Active Directory
 Import-MyModule ActiveDirectory
@@ -331,7 +335,7 @@ If ($UserList -ne $null){
 	$UsersToUpdate = Determine-UsersToUpdate $UserList $global:ADDSUserO365ImmutableTargetAttribute
 } else {
 	Write-Warning "No O365 Users were found. Exiting.."
-	Write-Output "Office 365 ImmutableID Assignment Script Completed - $TimeDate"
+	Write-Verbose "Office 365 ImmutableID Assignment Script Completed - $TimeDate"
 	#Quit Script
 	Exit
 }
@@ -341,12 +345,11 @@ If ($UserList -ne $null){
 If ($UsersToUpdate -ne $null){ 
 	$UpdateUsers = Apply-O365ImmutableID $UsersToUpdate $global:ADDSUserO365ImmutableTargetAttribute
 } else {
-	Write-Output "No O365 Users required updating"
-	Write-Output "Office 365 Immutable ID Assignment Script Completed"
+	Write-Verbose "No O365 Users required updating"
+	Write-Verbose "Office 365 Immutable ID Assignment Script Completed"
 	#Quit Script
 	Exit
 }
 
 ## End of Script
-    Write-Output "Office 365 Immutable ID Assignment Script Completed"
-
+    Write-Verbose "Office 365 Immutable ID Assignment Script Completed"
