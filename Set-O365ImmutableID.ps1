@@ -7,7 +7,24 @@
 		Office 365 ImmutableID instead of the default ObjectGUID attribute.
 	
 	.PARAMETER
-	
+        Domain
+            Domain Name of the AD Forest to connect to
+        
+        Site1
+            First AD Site to search for a DC
+        
+        Site2
+            Second AD Site to search for a DC
+
+        DomainCredential
+            Credential Asset in Azure Automation to connect to domain
+
+        ADSearchBase
+            AD Search Base in the format "OU=organisational unit,DC=mydomain,DC=local"
+
+        VerboseOutput
+            Output verbose logs during testing. Set to $true if required
+
 	.REQUIREMENTS
 		This runbook requires the following to be installed on the hybrid worker server
 			- Windows Azure Active Directory Module - http://go.microsoft.com/fwlink/p/?linkid=236297
@@ -19,6 +36,7 @@
 		Installation
 		1. Enter required parameters for the domain
 		2. Test this runbook in the test pane to confirm outputting desired outcome
+            Set VerboseOutput to $true for verbose logging in output pane while testing
 		3. If all works as desired create a scheduled task for this runbook to run with an on prem
            credentials asset
 
@@ -27,6 +45,7 @@
 		Author: Jean-Pierre Simonis
 		Modified By: Eric Yew
 		LASTEDIT: Feb 8, 2017
+        Source: https://github.com/ericyew/AzureHybridWorkers/blob/master/Set-O365ImmutableID.ps1
 
 	.CHANGE LOG
 		16/06/2016 v1.0 - Initial Release
@@ -36,10 +55,13 @@
 			- Full Error trapping and handing
 			- Customisable to OU, User Filter, Source and Target attributes
 		6/02/2017 - Modified to work with Azure Hybrid Worker
-            - Embedded Connect-RemoteDomain.ps1 to connect to a trusted domain
+            - Removed logging to file and event logs option
+            - Embedded call to runbook Connect-RemoteDomain.ps1 to connect to a trusted domain
+                -https://github.com/ericyew/AzureHybridWorkers/blob/master/Connect-RemoteDomain.ps1
             - Updated logging to output to job history
-                -Only if verbose logging is enabled for runbook
-
+                -Only warning and Errors are always logged,
+                    verbose logging needs to be enabled for runbook for informational logging
+                -Verbose logging to output to test pane by setting parameter to $true
 #>
 
 # Connect to Remote Domain
@@ -61,13 +83,16 @@
 
         [parameter(Mandatory=$false)] 
     	[String] $VerboseOutput = $false
-    ) 
+    )
 
-    .\Connect-RemoteDomain.ps1 `
-            -Domain $Domain `
-            -Site1 $Site1 `
-            -Site2 $Site2 `
-            -DomainCredential $DomainCredential 
+# Connect to trusted remote domain    
+    If($Domain -ne "slatergordon.group"){
+        .\Connect-RemoteDomain.ps1 `
+                -Domain $Domain `
+                -Site1 $Site1 `
+                -Site2 $Site2 `
+                -DomainCredential $DomainCredential
+    }
 
 # Enable Verbose logging for testing
     If($VerboseOutput){
@@ -98,7 +123,7 @@ Param([string]$name)
         if(Get-Module -ListAvailable $name) 
         { 
             Import-Module -Name $name 
-            Write-Verbose "Imported module $name"
+            #Write-Verbose "Imported module $name"
         } 
         else 
         { 
@@ -237,7 +262,7 @@ param(
 			        $UsersToUpdate = $UsersToUpdate + $user
 			    }
 		        else {
-			    Write-Verbose " - The user $DSuser already has $DSTargetProperty set."
+			    #Write-Verbose " - The user $DSuser already has $DSTargetProperty set."
 				    #Routine to determine is possibly set with an value other than expected
 				    if ($checkCloudAttrib.length -ne 24) {
 					    Write-Verbose "   - The user $DSuser may have an unexpected value in $DSTargetProperty set."
