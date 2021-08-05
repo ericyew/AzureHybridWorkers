@@ -67,7 +67,7 @@
 # Connect to Remote Domain
     param (
         [parameter(Mandatory=$false)] 
-        [String] $Domain = "slatergordon.com.au",
+        [String] $Domain = "domain1.local",
         
         [parameter(Mandatory=$false)] 
         [String] $Site1 = "AzureASE",
@@ -76,17 +76,17 @@
         [String] $Site2 = "MelbDataCentre",
 
         [parameter(Mandatory=$false)] 
-        [String] $DomainCredential = "SGAU serviceadmin",
+        [String] $DomainCredential = "serviceadmin",
 
         [parameter(Mandatory=$false)] 
-    	[String] $ADSearchBase = "OU=SlaterGordon,DC=slatergordon,DC=com,DC=au",
+    	[String] $ADSearchBase = "OU=OUname,DC=domain1,DC=local",
 
         [parameter(Mandatory=$false)] 
     	[String] $VerboseOutput = $false
     )
 
 # Connect to trusted remote domain    
-    If($Domain -ne "slatergordon.group"){
+    If($Domain -ne "domain2.local"){
         .\Connect-RemoteDomain.ps1 `
                 -Domain $Domain `
                 -Site1 $Site1 `
